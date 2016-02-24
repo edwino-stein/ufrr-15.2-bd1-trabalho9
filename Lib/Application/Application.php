@@ -28,7 +28,7 @@ abstract class Application {
 
         if(empty($namespace)) return;
         if(!isset(self::$namespaces[$base]))
-            throw new Exception('O Namespace "'.$base.'\\'.implode('\\', $namespace).'" não foi registrado.', 1);
+            throw new \Exception('O Namespace "'.$base.'\\'.implode('\\', $namespace).'" não foi registrado.', 1);
 
         require_once(self::$namespaces[$base].implode('/', $namespace).'.php');
     }

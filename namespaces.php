@@ -1,4 +1,5 @@
 <?php
 return array(
-    'App' => __DIR__.'/App/'
+    'Visitas' => __DIR__.'/Visitas/',
+    'DataBase' => __DIR__.'/Lib/DataBase/'
 );

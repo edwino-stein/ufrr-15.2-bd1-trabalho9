@@ -5,13 +5,16 @@ class Connection {
 
     protected static $instance = null;
     const DSN_TEMPLATE = '{driver}:host={host};dbname={dbname}';
-    const DEFAULT_CONFIG = array(
-        'host' => 'localhost',
-        'driver' => 'mysql',
-        'dbname' => '',
-        'user' => 'root',
-        'password' => ''
-    );
+
+    protected static function getDefaultConfig(){
+        return array(
+            'host' => 'localhost',
+            'driver' => 'mysql',
+            'dbname' => '',
+            'user' => 'root',
+            'password' => ''
+        );
+    }
 
     public $pdoConnection;
 
@@ -44,18 +47,21 @@ class Connection {
     }
 
     protected static function parseConfg($config){
+
+        $defaultConfig = self::getDefaultConfig();
+
         return array(
             'dsn' => str_replace(
                 array('{driver}', '{host}', '{dbname}'),
                 array(
-                    isset($config['driver']) ? $config['driver'] : self::DEFAULT_CONFIG['driver'],
-                    isset($config['host']) ? $config['host'] : self::DEFAULT_CONFIG['host'],
-                    isset($config['dbname']) ? $config['dbname'] : self::DEFAULT_CONFIG['dbname']
+                    isset($config['driver']) ? $config['driver'] : $defaultConfig['driver'],
+                    isset($config['host']) ? $config['host'] : $defaultConfig['host'],
+                    isset($config['dbname']) ? $config['dbname'] : $defaultConfig['dbname']
                 ),
                 self::DSN_TEMPLATE
             ),
-            'username' => isset($config['user']) ? $config['user'] : self::DEFAULT_CONFIG['user'],
-            'password' => isset($config['password']) ? $config['password'] : self::DEFAULT_CONFIG['password']
+            'username' => isset($config['user']) ? $config['user'] : $defaultConfig['user'],
+            'password' => isset($config['password']) ? $config['password'] : $defaultConfig['password']
         );
     }
 

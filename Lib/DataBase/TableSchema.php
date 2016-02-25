@@ -7,8 +7,13 @@ use DataBase\Annotations\Annotation;
 
 class TableSchema{
 
-    const DEFAULT_ATTRBS = array('type' => 'string', 'id' => false, 'notnull' => false, 'length' => null);
-    const TYPES = array('int', 'integer', 'float', 'double', 'string', 'char', 'datetime', 'bool', 'boolean');
+    protected static function getDefaultAttrbs(){
+        return array('type' => 'string', 'id' => false, 'notnull' => false, 'length' => null);
+    }
+
+    protected static function getTypes(){
+        return array('int', 'integer', 'float', 'double', 'string', 'char', 'datetime', 'bool', 'boolean');
+    }
 
     protected static function camelCaseToUnderscored($input){
         preg_match_all('!([A-Z][A-Z0-9]*(?=$|[A-Z][a-z0-9])|[A-Za-z][a-z0-9]+)!', $input, $matches);
@@ -85,7 +90,7 @@ class TableSchema{
         $colAttrbs = array();
 
         if(!($attributes instanceof Annotation)){
-            $colAttrbs = self::DEFAULT_ATTRBS;
+            $colAttrbs = self::getDefaultAttrbs();
             $colAttrbs['name'] = self::camelCaseToUnderscored($propertyName);
         }
         else{
@@ -96,9 +101,10 @@ class TableSchema{
                                  self::camelCaseToUnderscored($propertyName) : $name;
 
             //Pega o tipo
+            $types = self::getTypes();
             $type = strtolower($attributes->getTagValue('var'));
-            $colAttrbs['type'] = in_array($type, self::TYPES) ?
-                                 $type : self::DEFAULT_ATTRBS['type'];
+            $colAttrbs['type'] = in_array($type, $types) ?
+                                 $type : self::getDefaultAttrbs['type'];
 
             //Se for id
             $colAttrbs['id'] = $attributes->hasTag('id');
@@ -108,7 +114,7 @@ class TableSchema{
 
             //Pega o comprimento
             $length = $attributes->getTagValue('length');
-            $colAttrbs['length'] = $length === null || $length === true ? self::DEFAULT_ATTRBS['length'] : (int) $length;
+            $colAttrbs['length'] = $length === null || $length === true ? self::getDefaultAttrbs['length'] : (int) $length;
         }
 
         $this->columns[$propertyName] = $colAttrbs;

@@ -114,7 +114,7 @@ class TableSchema{
 
             //Pega o comprimento
             $length = $attributes->getTagValue('length');
-            $colAttrbs['length'] = $length === null || $length === true ? self::getDefaultAttrbs['length'] : (int) $length;
+            $colAttrbs['length'] = $length === null || $length === true ? self::getDefaultAttrbs()['length'] : (int) $length;
         }
 
         $this->columns[$propertyName] = $colAttrbs;

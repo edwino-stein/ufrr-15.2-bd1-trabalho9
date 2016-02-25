@@ -3,7 +3,7 @@ namespace DataBase;
 
 abstract class Types{
 
-
+    const NULL_TYPE = 'NULL';
 
     public static function casting($value, $type){
 
@@ -41,6 +41,8 @@ abstract class Types{
 
     public static function prepareToQuery($value, $type){
 
+        if($value === null) return self::NULL_TYPE;
+
         switch (strtolower($type)) {
 
             case 'bool':
@@ -61,6 +63,7 @@ abstract class Types{
             break;
         }
 
+        return self::NULL_TYPE;
     }
 
     public static function toInt($value){

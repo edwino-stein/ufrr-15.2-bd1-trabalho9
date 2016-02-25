@@ -46,6 +46,10 @@ class Connection {
         self::$instance = new self(self::parseConfg($config));
     }
 
+    public static function getLastInsertId(){
+        return self::$instance->pdoConnection->lastInsertId();
+    }
+
     protected static function parseConfg($config){
 
         $defaultConfig = self::getDefaultConfig();

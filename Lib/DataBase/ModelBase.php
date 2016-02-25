@@ -92,6 +92,18 @@ class ModelBase{
         return true;
     }
 
+    public function toArray(){
+        $modelName = get_called_class();
+        $tableSchema = self::getTableSchema($modelName);
+        $schemaCols = $tableSchema->getColumns();
+        $data = array();
+
+        foreach ($schemaCols as $property => $schema)
+            $data[$property] = $this->_get($property);
+
+        return $data;
+    }
+
     public static function getTableSchema($modelName = null){
         if($modelName === null) $modelName = get_called_class();
         if(isset(self::$schemas[$modelName])) return self::$schemas[$modelName];

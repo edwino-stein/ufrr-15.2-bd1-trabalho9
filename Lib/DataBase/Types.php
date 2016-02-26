@@ -97,7 +97,7 @@ abstract class Types{
         }
 
         else if($value instanceof \DateTime){
-            return $value->format('Y-m-d H:i');
+            return $value->format('Y-m-d H:i:s');
         }
 
         else if(is_bool($value)){

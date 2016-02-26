@@ -23,7 +23,7 @@ class ModelBase{
     public function save(){
 
         if(!$this->__loaded__){
-            $this->insert();
+            return $this->insert();
         }
 
         else{

@@ -15,25 +15,69 @@ class ModelBase{
     const FIND_SELECT = 'SELECT * FROM {table} {where} {order} {direction} {limit}';
     const FIND_ONE_SELECT = 'SELECT * FROM {table} {where} LIMIT 0,1';
     const INSERT = 'INSERT INTO {table} ({columns}) VALUES ({data})';
+    const UPDATE = 'UPDATE {table} SET {setters} {where}';
 
     private static $schemas = array();
 
     private $__loaded__ = false;
 
     public function save(){
+        return $this->__loaded__ ? $this->update() : $this->insert();
+    }
 
-        if(!$this->__loaded__){
-            return $this->insert();
+    public function update(){
+
+        if(!Connection::isInited()) throw new \Exception("A conexão com o banco de dados não foi configurada.", 1);
+        if(!$this->__loaded__) return $this->insert();
+
+        $modelName = get_called_class();
+        $tableSchema = self::getTableSchema($modelName);
+
+        $schemaCols = $tableSchema->getColumns();
+        $setters = array();
+        $idColumn = null;
+        $value = null;
+
+        foreach ($schemaCols as $property => $schema){
+
+            if($schema['id']){
+                $idColumn = $property;
+                continue;
+            }
+
+            $value = Types::prepareToQuery($this->_get($property), $schema['type']);
+
+            if($schema['notnull'] && $value === Types::NULL_TYPE){
+                throw new \Exception("A propriedade '$property' não pode ser NULL", 1);
+            }
+
+            if($schema['length'] !== null && $schema['type'] === 'string' && (strlen($value) - 2) >  $schema['length']){
+                throw new \Exception("A propriedade '$property' excedeu o comprimento maximo de ".$schema['length'], 1);
+            }
+
+            $setters[] = $schema['name'].' = '.$value;
         }
 
-        else{
-            //TODO Implementar o UPDATE
-            throw new \Exception("A biblioteca não tem suporte a UPDATE.", 1);
-        }
+        if($idColumn === null) throw new \Exception('Não existe um identificador definido para a entidade "'.$modelName.'".', 1);
+        $where = Where::parseArray(array($idColumn => $this->_get($idColumn)));
+
+        $sql = str_replace(
+            array('{table}', '{setters}', '{where}'),
+            array(
+                $tableSchema->getTableName(),
+                implode(', ', $setters),
+                $where->getSqlSnippet($tableSchema)
+            ),
+            self::UPDATE
+        );
+
+        $query = Connection::getConnection()->createQuery($sql);
+        return $query->execute() ? true : false;
     }
 
     public function insert(){
         if(!Connection::isInited()) throw new \Exception("A conexão com o banco de dados não foi configurada.", 1);
+        if($this->__loaded__) return $this->update();
 
         $modelName = get_called_class();
         $tableSchema = self::getTableSchema($modelName);

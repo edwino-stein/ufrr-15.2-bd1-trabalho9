@@ -117,7 +117,7 @@ abstract class Types{
             try {
                 $value = new \DateTime($value);
             }
-            catch (Exception $e) {
+            catch (\Exception $e) {
                 return null;
             }
 

@@ -16,6 +16,7 @@ class ModelBase{
     const FIND_ONE_SELECT = 'SELECT * FROM {table} {where} LIMIT 0,1';
     const INSERT = 'INSERT INTO {table} ({columns}) VALUES ({data})';
     const UPDATE = 'UPDATE {table} SET {setters} {where}';
+    const DELETE = 'DELETE FROM {table} {where}';
 
     private static $schemas = array();
 
@@ -23,6 +24,33 @@ class ModelBase{
 
     public function save(){
         return $this->__loaded__ ? $this->update() : $this->insert();
+    }
+
+    public function delete(){
+        if(!Connection::isInited()) throw new \Exception("A conexão com o banco de dados não foi configurada.", 1);
+        if(!$this->__loaded__) return true;
+
+        $modelName = get_called_class();
+        $tableSchema = self::getTableSchema($modelName);
+        $idColumn = null;
+        $tableSchema->getIdColumn($idColumn);
+
+        if($idColumn === null) throw new \Exception('Não existe um identificador definido para a entidade "'.$modelName.'".', 1);
+        $where = Where::parseArray(array($idColumn => $this->_get($idColumn)));
+
+        $sql = str_replace(
+            array('{table}', '{where}'),
+            array(
+                $tableSchema->getTableName(),
+                $where->getSqlSnippet($tableSchema)
+            ),
+            self::DELETE
+        );
+
+        $query = Connection::getConnection()->createQuery($sql);
+        if(!$query->execute()) return false;
+        $this->_setLoaded(false);
+        return true;
     }
 
     public function update(){

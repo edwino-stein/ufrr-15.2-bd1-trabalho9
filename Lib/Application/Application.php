@@ -1,5 +1,6 @@
 <?php
 namespace Application;
+opcache_reset();
 
 include_once(__DIR__.'/autoload.php');
 
@@ -32,5 +33,4 @@ abstract class Application {
 
         require_once(self::$namespaces[$base].implode('/', $namespace).'.php');
     }
-
 }

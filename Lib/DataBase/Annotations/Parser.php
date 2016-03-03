@@ -31,7 +31,7 @@ class Parser{
     }
 
     public static function getAnnotationsArray($reflections){
-        if(!is_array($reflections)) throw new \Exception("O parametro deve ser um array", 1);
+        if(!is_array($reflections)) throw new \Exception("O parâmetro deve ser um array.", 1);
 
         $annotations = array();
         foreach ($reflections as $reflection) {

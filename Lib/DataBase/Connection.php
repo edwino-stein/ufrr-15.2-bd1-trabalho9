@@ -1,7 +1,16 @@
 <?php
 namespace DataBase;
 
+use DataBase\Errors;
+
 class Connection {
+
+    protected static $erros = array(
+        0 => Errors::DRIVER_INVALID,
+        2005 => Errors::CONNECTION_ERROR,
+        1044 => Errors::DATA_BASE_INVALID,
+        1045 => Errors::USER_OR_PASSWORD_INVALID,
+    );
 
     protected static $instance = null;
     const DSN_TEMPLATE = '{driver}:host={host};dbname={dbname}';
@@ -16,14 +25,22 @@ class Connection {
         );
     }
 
-    public $pdoConnection;
+    protected $pdoConnection;
 
     protected function __construct($config){
-        $this->pdoConnection = new \PDO(
-            $config['dsn'],
-            $config['username'],
-            $config['password']
-        );
+
+        try{
+            $this->pdoConnection = new \PDO(
+                $config['dsn'],
+                $config['username'],
+                $config['password'],
+                array(\PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION)
+            );
+        }
+        catch(\Exception $e){
+            $code = isset(self::$erros[$e->getCode()]) ? self::$erros[$e->getCode()] : Errors::UNKNOW_ERROR;
+            throw Errors::getException(self::$erros[$e->getCode()], $e);
+        }
     }
 
     public function query($sql){
@@ -31,7 +48,16 @@ class Connection {
     }
 
     public function createQuery($sql){
-        return $this->pdoConnection->prepare($sql);
+
+        try{
+            $query = $this->pdoConnection->prepare($sql);
+        }
+        catch(\Exception $e){
+            Errors::getException(Errors::CANT_CREATE_QUERY, $e);
+        }
+
+        if($query === false) Errors::getException(Errors::CANT_CREATE_QUERY, $e);
+        return $query;
     }
 
     protected function __clone() {}

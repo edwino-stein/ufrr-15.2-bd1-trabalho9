@@ -2,6 +2,7 @@
 namespace DataBase;
 
 use DataBase\Connection;
+use DataBase\Errors;
 use DataBase\TableSchema;
 use DataBase\Types;
 use DataBase\Where;
@@ -27,7 +28,8 @@ class ModelBase{
     }
 
     public function delete(){
-        if(!Connection::isInited()) throw new \Exception("A conexão com o banco de dados não foi configurada.", 1);
+
+        if(!Connection::isInited()) throw Errors::getException(Errors::CONNECTION_NOT_SETTED);
         if(!$this->__loaded__) return true;
 
         $modelName = get_called_class();
@@ -35,10 +37,11 @@ class ModelBase{
         $idColumn = null;
         $tableSchema->getIdColumn($idColumn);
 
-        if($idColumn === null) throw new \Exception('Não existe um identificador definido para a entidade "'.$modelName.'".', 1);
-        $where = Where::parseArray(array($idColumn => $this->_get($idColumn)));
+        if($idColumn === null)
+            throw Errors::getExceptionWithDetails(Errors::ID_NOT_DEFINED, array('{entity}' => $modelName));
 
-        $sql = str_replace(
+        $where = Where::parseArray(array($idColumn => $this->_get($idColumn)));
+        $result = self::execQuery(
             array('{table}', '{where}'),
             array(
                 $tableSchema->getTableName(),
@@ -47,15 +50,13 @@ class ModelBase{
             self::DELETE
         );
 
-        $query = Connection::getConnection()->createQuery($sql);
-        if(!$query->execute()) return false;
         $this->_setLoaded(false);
         return true;
     }
 
     public function update(){
 
-        if(!Connection::isInited()) throw new \Exception("A conexão com o banco de dados não foi configurada.", 1);
+        if(!Connection::isInited()) throw Errors::getException(Errors::CONNECTION_NOT_SETTED);
         if(!$this->__loaded__) return $this->insert();
 
         $modelName = get_called_class();
@@ -76,20 +77,27 @@ class ModelBase{
             $value = Types::prepareToQuery($this->_get($property), $schema['type']);
 
             if($schema['notnull'] && $value === Types::NULL_TYPE){
-                throw new \Exception("A propriedade '$property' não pode ser NULL", 1);
+                throw Errors::getExceptionWithDetails(
+                    Errors::PROPERTY_NOT_NULL,
+                    array('{property}' => $property)
+                );
             }
 
             if($schema['length'] !== null && $schema['type'] === 'string' && (strlen($value) - 2) >  $schema['length']){
-                throw new \Exception("A propriedade '$property' excedeu o comprimento maximo de ".$schema['length'], 1);
+                throw Errors::getExceptionWithDetails(
+                    Errors::LENGTH_OVERFLOW,
+                    array('{property}' => $property, '{length}' => $schema['length'])
+                );
             }
 
             $setters[] = $schema['name'].' = '.$value;
         }
 
-        if($idColumn === null) throw new \Exception('Não existe um identificador definido para a entidade "'.$modelName.'".', 1);
-        $where = Where::parseArray(array($idColumn => $this->_get($idColumn)));
+        if($idColumn === null)
+            throw Errors::getExceptionWithDetails(Errors::ID_NOT_DEFINED, array('{entity}' => $modelName));
 
-        $sql = str_replace(
+        $where = Where::parseArray(array($idColumn => $this->_get($idColumn)));
+        $result = self::execQuery(
             array('{table}', '{setters}', '{where}'),
             array(
                 $tableSchema->getTableName(),
@@ -99,12 +107,12 @@ class ModelBase{
             self::UPDATE
         );
 
-        $query = Connection::getConnection()->createQuery($sql);
-        return $query->execute() ? true : false;
+        return true;
     }
 
     public function insert(){
-        if(!Connection::isInited()) throw new \Exception("A conexão com o banco de dados não foi configurada.", 1);
+
+        if(!Connection::isInited()) throw Errors::getException(Errors::CONNECTION_NOT_SETTED);
         if($this->__loaded__) return $this->update();
 
         $modelName = get_called_class();
@@ -129,17 +137,23 @@ class ModelBase{
             $value = Types::prepareToQuery($this->_get($property), $schema['type']);
 
             if($schema['notnull'] && $value === Types::NULL_TYPE){
-                throw new \Exception("A propriedade '$property' não pode ser NULL", 1);
+                throw Errors::getExceptionWithDetails(
+                    Errors::PROPERTY_NOT_NULL,
+                    array('{property}' => $property)
+                );
             }
 
             if($schema['length'] !== null && $schema['type'] === 'string' && (strlen($value) - 2) >  $schema['length']){
-                throw new \Exception("A propriedade '$property' excedeu o comprimento maximo de ".$schema['length'], 1);
+                throw Errors::getExceptionWithDetails(
+                    Errors::LENGTH_OVERFLOW,
+                    array('{property}' => $property, '{length}' => $schema['length'])
+                );
             }
 
             $data[] = $value;
         }
 
-        $sql = str_replace(
+        $result = self::execQuery(
             array('{table}', '{columns}', '{data}'),
             array(
                 $tableSchema->getTableName(),
@@ -148,9 +162,6 @@ class ModelBase{
             ),
             self::INSERT
         );
-
-        $query = Connection::getConnection()->createQuery($sql);
-        if(!$query->execute()) return false;
 
         if($idColumn !== null){
             $this->_set(
@@ -185,16 +196,16 @@ class ModelBase{
 
     public static function fetchAll($options = array()){
 
-        if(!Connection::isInited()) throw new \Exception("A conexão com o banco de dados não foi configurada.", 1);
+        if(!Connection::isInited()) throw Errors::getException(Errors::CONNECTION_NOT_SETTED);
 
         $modelName = get_called_class();
         $tableSchema = self::getTableSchema($modelName);
         $options = self::parseOptions($options, $tableSchema);
 
-        $sql = str_replace(
+        $result = self::execQuery(
             array('{table}', '{order}', '{direction}', '{limit}'),
             array(
-                $tableSchema->getTableName(),
+                $tableSchema->getTableName().'fdsfds',
                 $options['orderby'],
                 $options['direction'],
                 $options['limit'],
@@ -202,12 +213,8 @@ class ModelBase{
             self::GENERIC_SELECT
         );
 
-        $query = Connection::getConnection()->createQuery($sql);
-
-        if(!$query->execute()) return false;
-
         $data = array();
-        while($row = $query->fetch(\PDO::FETCH_OBJ))
+        while($row = $result->fetch(\PDO::FETCH_OBJ))
             $data[] = self::getModelInstance($modelName, $tableSchema, $row);
 
         return $data;
@@ -215,16 +222,16 @@ class ModelBase{
 
     public static function findBy($where, $options = array()){
 
-        if(!Connection::isInited()) throw new \Exception("A conexão com o banco de dados não foi configurada.", 1);
+        if(!Connection::isInited()) throw Errors::getException(Errors::CONNECTION_NOT_SETTED);
 
         $modelName = get_called_class();
         $tableSchema = self::getTableSchema($modelName);
         $options = self::parseOptions($options, $tableSchema);
 
         if(is_array($where)) $where = Where::parseArray($where);
-        if(!($where instanceof Where)) throw new \Exception("O parametro \'\$where\' deve ser um array ou uma instancia de DataBase\Where", 1);
+        if(!($where instanceof Where)) throw Errors::getException(Errors::WHERE_PARAM_INVALID);
 
-        $sql = str_replace(
+        $result = self::execQuery(
             array('{table}', '{where}', '{order}', '{direction}', '{limit}'),
             array(
                 $tableSchema->getTableName(),
@@ -236,11 +243,8 @@ class ModelBase{
             self::FIND_SELECT
         );
 
-        $query = Connection::getConnection()->createQuery($sql);
-        if(!$query->execute()) return false;
-
         $data = array();
-        while($row = $query->fetch(\PDO::FETCH_OBJ))
+        while($row = $result->fetch(\PDO::FETCH_OBJ))
             $data[] = self::getModelInstance($modelName, $tableSchema, $row);
 
         return $data;
@@ -248,15 +252,15 @@ class ModelBase{
 
     public static function findOneBy($where){
 
-        if(!Connection::isInited()) throw new \Exception("A conexão com o banco de dados não foi configurada.", 1);
+        if(!Connection::isInited()) throw Errors::getException(Errors::CONNECTION_NOT_SETTED);
 
         $modelName = get_called_class();
         $tableSchema = self::getTableSchema($modelName);
 
         if(is_array($where)) $where = Where::parseArray($where);
-        if(!($where instanceof Where)) throw new \Exception("O parametro \'\$where\' deve ser um array ou uma instancia de DataBase\Where", 1);
+        if(!($where instanceof Where)) throw Errors::getException(Errors::WHERE_PARAM_INVALID);
 
-        $sql = str_replace(
+        $result = self::execQuery(
             array('{table}', '{where}'),
             array(
                 $tableSchema->getTableName(),
@@ -265,10 +269,43 @@ class ModelBase{
             self::FIND_ONE_SELECT
         );
 
-        $query = Connection::getConnection()->createQuery($sql);
-        if(!$query->execute()) return false;
-        $row = $query->fetch(\PDO::FETCH_OBJ);
+        $row = $result->fetch(\PDO::FETCH_OBJ);
         return $row ? self::getModelInstance($modelName, $tableSchema, $row) : null;
+    }
+
+    protected static function execQuery($params, $values, $sqlBase){
+
+        $sql = str_replace($params, $values, $sqlBase);
+        $query = Connection::getConnection()->createQuery($sql);
+
+        try{
+            $query->execute();
+        }
+        catch(\Exception $e){
+
+            $code = 0;
+            switch ($e->getCode()) {
+                case '42S02':
+                    $code = Errors::TABLE_NOT_FOUND;
+                break;
+
+                case '42S22':
+                    $code = Errors::COLUMN_NOT_FOUND;
+                break;
+
+                case '42000':
+                    $code = Errors::SYNTAX_ERROR;
+                break;
+
+                default:
+                    $code = Errors::UNKNOW_ERROR;
+                break;
+            }
+
+            throw Errors::getException($code, $e);
+        }
+
+        return $query;
     }
 
     protected static function parseOptions($options, $tableSchema){
@@ -331,7 +368,6 @@ class ModelBase{
             $propertyName = null;
             $columnSchema = $tableSchema->getColumnByName($name, $propertyName);
             $model->_set($propertyName, $value, $columnSchema);
-
         }
 
         $model->_setLoaded($loaded);
